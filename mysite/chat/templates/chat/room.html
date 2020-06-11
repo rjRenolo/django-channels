@@ -9,18 +9,36 @@
     <input id="chat-message-input" type="text" size="100" /><br />
     <input id="chat-message-submit" type="button" value="Send" />
     {{ room_name|json_script:"room-name" }}
+
     <script>
       const roomName = JSON.parse(
         document.getElementById('room-name').textContent
       );
+      var username = {{username}}
 
       const chatSocket = new WebSocket(
         'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
       );
 
+      chatSocket.onopen = function(e){
+        console.log('socket connection open do something')
+        fetchMessages();
+      }
+
+      function fetchMessages(){
+        chatSocket.send(JSON.stringify({'command':'fetch_messages'}))
+      }
+
       chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
-        document.querySelector('#chat-log').value += data.message + '\n';
+        // document.querySelector('#chat-log').value += data.message + '\n';
+        document.querySelector('#chat-log').value += `from ${data.author} : ${data.content}` + '\n';
+
+        // socket consumer required parameter
+        // console.log(data['author'])
+        // console.log(data['content'])
+        var message = data['content']
+        var author = data['author']
       };
 
       chatSocket.onclose = function(e) {
@@ -38,9 +56,19 @@
       document.querySelector('#chat-message-submit').onclick = function(e) {
         const messageInputDom = document.querySelector('#chat-message-input');
         const message = messageInputDom.value;
+        console.log('submit clicked', JSON.stringify({
+            message: message,
+            // 'command':'fetch_messages'
+            command: 'new_message',
+            from: username
+          }))
         chatSocket.send(
           JSON.stringify({
-            message: message
+            message: message,
+            // 'command':'fetch_messages'
+            command: 'new_message',
+            from: username,
+            room_name:roomName
           })
         );
         messageInputDom.value = '';
